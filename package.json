@@ -9,14 +9,14 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/Num1na/currencies-rates.git"
+    "url": "git+https://github.com/doriandrn/currencies-rates.git"
   },
   "author": "Dorian Tudorache <dorian.snaz@gmail.com>",
   "license": "ISC",
   "bugs": {
-    "url": "https://github.com/Num1na/currencies-rates/issues"
+    "url": "https://github.com/doriandrn/currencies-rates/issues"
   },
-  "homepage": "https://github.com/Num1na/currencies-rates#readme",
+  "homepage": "https://github.com/doriandrn/currencies-rates#readme",
   "devDependencies": {
     "axios": "^0.21.0"
   }

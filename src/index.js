@@ -6,13 +6,12 @@ const {
   url,
   endpoints,
   headers,
-  currenciesPath,
-  currenciesListPath,
+  dist,
   quotesUrl,
   preferredCryptos
 } = config
 
-
+const distList = `${ dist }/list`
 let list = {}
 
 function processData (data) {
@@ -25,15 +24,15 @@ function processData (data) {
 
 try {
   endpoints.map(e => {
-    const { timestamp, data } = JSON.parse(fs.readFileSync(`${ currenciesListPath }/${ e }.json`))
+    const { timestamp, data } = JSON.parse(fs.readFileSync(`${ distList }/${ e }.json`))
     list[e] = e === 'fiat' ? data : data.filter(c => preferredCryptos.indexOf(c.id) > -1)
   })
   getUpdatedRates(list)
 } catch (e) {
   console.info('No currencies found, getting fresh...')
 
-  if (!fs.existsSync(currenciesListPath)){
-    fs.mkdirSync(currenciesListPath, { recursive: true })
+  if (!fs.existsSync(distList)){
+    fs.mkdirSync(distList, { recursive: true })
   }
 
   // get fiat and crypto currencies list and write to static
@@ -49,7 +48,7 @@ try {
             return { id, name, symbol, sign }
           })
         list[ep] = data
-        fs.writeFileSync(`${currenciesListPath}/${ep}.json`, JSON.stringify(data))
+        fs.writeFileSync(`${distList}/${ep}.json`, JSON.stringify(data))
 
         getUpdatedRates(list)
       })
@@ -65,8 +64,8 @@ function getUpdatedRates ( list ) {
 
   const ids = [ ...preferredCryptos, ...list.fiat.data.map(c => c.id) ]
 
-  fs.writeFileSync(`${ currenciesPath }/ids.json`, JSON.stringify(ids))
-  fs.writeFileSync(`${ currenciesPath }/list.json`, JSON.stringify(list))
+  fs.writeFileSync(`${ dist }/ids.json`, JSON.stringify(ids))
+  fs.writeFileSync(`${ dist }/list.json`, JSON.stringify(list))
 
   // const symNames = {}
   // endpoints.forEach(e => {
@@ -76,7 +75,7 @@ function getUpdatedRates ( list ) {
   //     symNames[symbol] = name
   //   })
   // })
-  // fs.writeFileSync(`${ currenciesPath }/symbols-names.json`, JSON.stringify(symNames))
+  // fs.writeFileSync(`${ dist }/symbols-names.json`, JSON.stringify(symNames))
 
   axios.get(quotesUrl, {
     headers,
@@ -94,7 +93,7 @@ function getUpdatedRates ( list ) {
       data.data[d] = quote[Object.keys(quote)[0]].price
     })
 
-    fs.writeFileSync(`${currenciesPath}/rates.json`, JSON.stringify(data))
+    fs.writeFileSync(`${dist}/rates.json`, JSON.stringify(data))
     console.info('Updated rates succesfully!')
   }).catch(e => {
     console.error('GET QUOTES FAILED', e)

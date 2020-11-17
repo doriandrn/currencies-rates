@@ -15,8 +15,6 @@ const headers = { 'X-CMC_PRO_API_KEY': apiKey }
  * PATHS
  */
 const dist = 'dist'
-const currenciesPath = `${ dist }/currencies`
-const currenciesListPath = `${ currenciesPath }/list`
 
 /**
  * PREFERRED COINS - FOR RATES ONLY
@@ -28,8 +26,6 @@ export default {
   endpoints,
   headers,
   dist,
-  currenciesPath,
-  currenciesListPath,
   quotesUrl,
   preferredCryptos
 }
