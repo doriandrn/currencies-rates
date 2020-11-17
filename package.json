@@ -1,0 +1,23 @@
+{
+  "name": "currencies-rates",
+  "version": "1.0.0",
+  "description": "Currencies and rates",
+  "main": "index.js",
+  "type": "module",
+  "scripts": {
+    "build": "node --experimental-modules src/index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Num1na/currencies-rates.git"
+  },
+  "author": "Dorian Tudorache <dorian.snaz@gmail.com>",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/Num1na/currencies-rates/issues"
+  },
+  "homepage": "https://github.com/Num1na/currencies-rates#readme",
+  "devDependencies": {
+    "axios": "^0.21.0"
+  }
+}
