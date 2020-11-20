@@ -5,7 +5,7 @@ const apiKey = process.env.CMC_KEY || fs.readFileSync('keys/CoinMarketCap', 'utf
  * API SETUP
  */
 const url = 'https://pro-api.coinmarketcap.com/v1'
-const quotesUrl = `${ url }/cryptocurrency/quotes/latest`
+const quotesUrl = `${ url }/cryptocurrency/quotes/latest`.trim()
 const endpoints = [
   'fiat',
   'cryptocurrency'
