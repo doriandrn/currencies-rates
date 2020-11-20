@@ -1,5 +1,5 @@
 import axios from 'axios'
-import fs from 'fs'
+import fs, { writeFileSync } from 'fs'
 import config from './config.js'
 
 const {
@@ -19,21 +19,28 @@ const processData = data => {
   }
   return data
 }
+const writeFiles = (o) => {
+  Object.keys(o).forEach(a => {
+    fs.writeFileSync(`${ dist }/${ a }.json`, JSON.stringify(o[a]))
+  })
+}
 const distRepo = 'https://doriandrn.github.io/currencies-rates'
+
+if (!fs.existsSync(distList))
+  fs.mkdirSync(distList, { recursive: true })
 
 axios
   .get(`${ distRepo }/list.json`)
   .then(async ({ data }) => {
     const ids = await axios.get(`${ distRepo }/ids.json`)
+    const symNames = await axios.get(`${ distRepo }/symbols-names.json`)
     const rates = await axios.get(`${ distRepo }/rates.json`)
+    writeFiles({ ids, list: data, 'symbols-names': symNames })
     if (ids && ids.length && rates)
       getUpdatedRates(ids, rates)
   })
   .catch(async (e) => {
     console.info('No currencies found, getting fresh...')
-
-    if (!fs.existsSync(distList))
-      fs.mkdirSync(distList, { recursive: true })
 
     const listAll = {}
 
@@ -78,9 +85,7 @@ axios
     })
     const ids = [ ...preferredCryptos, ...list.fiat.data.map(c => c.id) ]
 
-    fs.writeFileSync(`${ dist }/ids.json`, JSON.stringify(ids))
-    fs.writeFileSync(`${ dist }/list.json`, JSON.stringify(list))
-    fs.writeFileSync(`${ dist }/symbols-names.json`, JSON.stringify(symNames))
+    writeFiles({ ids, list, 'symbols-names': symNames })
 
     getUpdatedRates(ids)
   })
