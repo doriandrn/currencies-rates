@@ -1,5 +1,5 @@
 import axios from 'axios'
-import fs, { writeFileSync } from 'fs'
+import fs from 'fs'
 import config from './config.js'
 
 const {
@@ -83,7 +83,7 @@ axios
         symNames[symbol] = name
       })
     })
-    const ids = [ ...preferredCryptos, ...list.fiat.data.map(c => c.id) ]
+    const ids = [ ...preferredCryptos, ...list.fiat.map(c => c.id) ]
 
     writeFiles({ ids, list, 'symbols-names': symNames })
 
@@ -92,7 +92,7 @@ axios
 
 function getUpdatedRates ( ids, previousRates ) {
   if (previousRates) {
-    fs.writeFileSync(`${ dist }/rates-${ previousRates.timestamp }.json`, JSON.stringify(previousRates))
+    fs.writeFileSync(`${ dist }/rates-${ (new Date(previousRates.timestamp)).getTime() }.json`, JSON.stringify(previousRates))
   }
 
   axios.get(quotesUrl, {
