@@ -12,34 +12,35 @@ const {
 } = config
 
 const distList = `${ dist }/list`
-let list = {}
-
-function processData (data) {
+const processData = data => {
   if (data.status) {
     data.timestamp = data.status.timestamp
     delete data.status
   }
   return data
 }
+const distRepo = 'https://doriandrn.github.io/currencies-rates'
 
-try {
-  endpoints.map(e => {
-    const { timestamp, data } = JSON.parse(fs.readFileSync(`${ distList }/${ e }.json`))
-    list[e] = e === 'fiat' ? data : data.filter(c => preferredCryptos.indexOf(c.id) > -1)
+axios
+  .get(`${ distRepo }/list.json`)
+  .then(async ({ data }) => {
+    const ids = await axios.get(`${ distRepo }/ids.json`)
+    const rates = await axios.get(`${ distRepo }/rates.json`)
+    if (ids && ids.length && rates)
+      getUpdatedRates(ids, rates)
   })
-  getUpdatedRates(list)
-} catch (e) {
-  console.info('No currencies found, getting fresh...')
+  .catch(async (e) => {
+    console.info('No currencies found, getting fresh...')
 
-  if (!fs.existsSync(distList)){
-    fs.mkdirSync(distList, { recursive: true })
-  }
+    if (!fs.existsSync(distList))
+      fs.mkdirSync(distList, { recursive: true })
 
-  // get fiat and crypto currencies list and write to static
-  // Reminder: delete list/ folder to update
-  endpoints.forEach(ep => {
-    axios.get(`${url}/${ep}/map`, { headers })
-      .then(({ data }) => {
+    const listAll = {}
+
+    await Promise.all(endpoints.map(async ep => {
+      try {
+        let { data } = await axios.get(`${ url }/${ ep }/map`, { headers })
+
         data = processData(data)
         data.data = data.data
           .filter(d => d.name) // keep coins tha have a name
@@ -47,35 +48,47 @@ try {
             const { id, name, symbol, sign } = d
             return { id, name, symbol, sign }
           })
-        list[ep] = data
-        fs.writeFileSync(`${distList}/${ep}.json`, JSON.stringify(data))
+        listAll[ep] = data
+        fs.writeFileSync(`${ distList }/${ ep }.json`, JSON.stringify(data))
+      }
+      catch (e) {
+        console.error('Could not build currencies list: ', e)
+      }
 
-        getUpdatedRates(list)
+      return ep
+    }))
+
+    if (Object.keys(listAll).length < 0)
+      return
+
+    const list = [ ...endpoints ]
+      .map(e => {
+        const { timestamp, data } = listAll[e]
+        return listAll[e] = e === 'fiat' ? data : data.filter(c => preferredCryptos.indexOf(c.id) > -1)
       })
-      .catch(e => {
-        console.error('Could not update currencies list: ', e)
+      .reduce((prev, cur, i) => ({ ...prev, [endpoints[i]]: cur }), {})
+
+    const symNames = {}
+    endpoints.forEach(e => {
+      Object.keys(list[e]).forEach(id => {
+        const d = list[e][id]
+        const { name, symbol } = d
+        symNames[symbol] = name
       })
+    })
+    const ids = [ ...preferredCryptos, ...list.fiat.data.map(c => c.id) ]
+
+    fs.writeFileSync(`${ dist }/ids.json`, JSON.stringify(ids))
+    fs.writeFileSync(`${ dist }/list.json`, JSON.stringify(list))
+    fs.writeFileSync(`${ dist }/symbols-names.json`, JSON.stringify(symNames))
+
+    getUpdatedRates(ids)
   })
-}
 
-function getUpdatedRates ( list ) {
-  if ( Object.keys(list).length !== 2 )
-    return
-
-  const ids = [ ...preferredCryptos, ...list.fiat.data.map(c => c.id) ]
-
-  fs.writeFileSync(`${ dist }/ids.json`, JSON.stringify(ids))
-  fs.writeFileSync(`${ dist }/list.json`, JSON.stringify(list))
-
-  // const symNames = {}
-  // endpoints.forEach(e => {
-  //   Object.keys(list[e]).forEach(id => {
-  //     const d = list[e][id]
-  //     const { name, symbol } = d
-  //     symNames[symbol] = name
-  //   })
-  // })
-  // fs.writeFileSync(`${ dist }/symbols-names.json`, JSON.stringify(symNames))
+function getUpdatedRates ( ids, previousRates ) {
+  if (previousRates) {
+    fs.writeFileSync(`${ dist }/rates-${ previousRates.timestamp }.json`, JSON.stringify(previousRates))
+  }
 
   axios.get(quotesUrl, {
     headers,
@@ -93,7 +106,7 @@ function getUpdatedRates ( list ) {
       data.data[d] = quote[Object.keys(quote)[0]].price
     })
 
-    fs.writeFileSync(`${dist}/rates.json`, JSON.stringify(data))
+    fs.writeFileSync(`${ dist }/rates.json`, JSON.stringify(data))
     console.info('Updated rates succesfully!')
   }).catch(e => {
     console.error('GET QUOTES FAILED', e)

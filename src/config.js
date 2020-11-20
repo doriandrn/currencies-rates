@@ -1,4 +1,5 @@
-const apiKey = process.env.CMC_KEY || require('../keys/CoinMarketCap.js')
+import fs from 'fs'
+const apiKey = process.env.CMC_KEY || fs.readFileSync('keys/CoinMarketCap', 'utf-8').trim()
 
 /**
  * API SETUP
