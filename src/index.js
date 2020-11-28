@@ -20,7 +20,7 @@ const processData = data => {
   return data
 }
 const writeFiles = (o) => {
-  Object.keys(o).forEach(a => {
+  Object.keys(o).map(a => {
     fs.writeFileSync(`${ dist }/${ a }.json`, JSON.stringify(o[a]))
   })
 }
@@ -29,66 +29,57 @@ const distRepo = 'https://doriandrn.github.io/currencies-rates'
 if (!fs.existsSync(distList))
   fs.mkdirSync(distList, { recursive: true })
 
-axios
-  .get(`${ distRepo }/list.json`)
-  .then(async ({ data }) => {
-    const ids = await axios.get(`${ distRepo }/ids.json`)
-    const symNames = await axios.get(`${ distRepo }/symbols-names.json`)
-    const rates = await axios.get(`${ distRepo }/rates.json`)
-    writeFiles({ ids, list: data, 'symbols-names': symNames })
-    if (ids && ids.length && rates)
-      getUpdatedRates(ids, rates)
-  })
-  .catch(async (e) => {
-    console.info('No currencies found, getting fresh...')
-
-    const listAll = {}
-
-    await Promise.all(endpoints.map(async ep => {
+const getBigList = async () => {
+  return await Promise.all([ ...endpoints ].map(async e => {
+    let data
+    try {
+      data = await axios.get(`${ distRepo }/list/${ e }.json`)
+    } catch (e) {
       try {
-        let { data } = await axios.get(`${ url }/${ ep }/map`, { headers })
-
-        data = processData(data)
-        data.data = data.data
-          .filter(d => d.name) // keep coins tha have a name
-          .map(d => {
-            const { id, name, symbol, sign } = d
-            return { id, name, symbol, sign }
-          })
-        listAll[ep] = data
-        fs.writeFileSync(`${ distList }/${ ep }.json`, JSON.stringify(data))
+        data = await axios.get(`${ url }/${ ep }/map`, { headers })
+      } catch (e) {
+        console.error('could not get data')
+        return
       }
-      catch (e) {
-        console.error('Could not build currencies list: ', e)
-      }
-
-      return ep
-    }))
-
-    if (Object.keys(listAll).length < 0)
-      return
-
-    const list = [ ...endpoints ]
-      .map(e => {
-        const { timestamp, data } = listAll[e]
-        return listAll[e] = e === 'fiat' ? data : data.filter(c => preferredCryptos.indexOf(c.id) > -1)
+    }
+    data = processData(data.data)
+    data.data = data.data
+      .filter(d => d.name) // keep coins tha have a name
+      .map(d => {
+        const { id, name, symbol, sign } = d
+        return { id, name, symbol, sign }
       })
-      .reduce((prev, cur, i) => ({ ...prev, [endpoints[i]]: cur }), {})
 
-    const symNames = {}
-    endpoints.forEach(e => {
-      Object.keys(list[e]).forEach(id => {
-        const d = list[e][id]
-        const { name, symbol } = d
-        symNames[symbol] = name
-      })
+    fs.writeFileSync(`${ distList }/${ e }.json`, JSON.stringify(data))
+    return { [e]: data }
+  }))
+}
+
+getBigList().then(async lists => {
+  const list = lists.reduce((prev, cur, i) => ({ ...prev, [endpoints[i]]: cur[endpoints[i]].data }), {})
+  list.cryptocurrency = list.cryptocurrency.filter(c => preferredCryptos.indexOf(c.id) > -1)
+  const symNames = {}
+
+  endpoints.forEach(e => {
+    list[e] = list[e].reduce((a, b) => ({ ...a, [ b.id ]: { name: b.name, sign: b.sign, symbol: b.symbol } }), {})
+    Object.keys(list[e]).forEach(id => {
+      const d = list[e][id]
+      const { name, symbol } = d
+      symNames[symbol] = name
     })
-    const ids = [ ...preferredCryptos, ...list.fiat.map(c => c.id) ]
-
-    writeFiles({ ids, list, 'symbols-names': symNames })
-
-    getUpdatedRates(ids)
   })
+
+  const ids = [ ...preferredCryptos, ...Object.keys(list.fiat).map(i => Number(i)) ]
+  writeFiles({
+    ids,
+    list,
+    'symbols-names': symNames
+  })
+
+  const rates = await axios.get(`${ distRepo }/rates.json`)
+
+  getUpdatedRates(ids, rates.data)
+})
 
 function getUpdatedRates ( ids, previousRates ) {
   if (previousRates) {
