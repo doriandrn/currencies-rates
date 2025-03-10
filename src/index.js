@@ -102,8 +102,9 @@ function getUpdatedRates ( ids, previousRates ) {
       data.data[d] = quote[Object.keys(quote)[0]].price
     })
 
-    fs.writeFileSync(`${ dist }/rates.json`, JSON.stringify(data))
-    console.info('Updated rates succesfully!')
+    const sdata = JSON.stringify(data)
+    fs.writeFileSync(`${ dist }/rates.json`, sdata)
+    console.info('Updated rates succesfully!', sdata)
   }).catch(e => {
     console.error('GET QUOTES FAILED', e)
   })
